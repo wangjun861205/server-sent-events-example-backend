@@ -5,15 +5,15 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 type HandlerFactory = func(keeper *AddrKeeper) http.Handler
 
 func PullMsgFactory(keeper *AddrKeeper) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		segs := strings.Split(r.URL.Path, "/")
-		id := segs[len(segs)-2]
+		uid := mux.Vars(r)["uid"]
 		outChan := make(chan string)
 		go func() {
 			for msg := range outChan {
@@ -23,7 +23,7 @@ func PullMsgFactory(keeper *AddrKeeper) http.Handler {
 				w.(http.Flusher).Flush()
 			}
 		}()
-		keeper.register(id, outChan)
+		keeper.register(uid, outChan)
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -32,7 +32,7 @@ func PullMsgFactory(keeper *AddrKeeper) http.Handler {
 		w.Header().Set("Content-Encoding", "none")
 
 		<-r.Context().Done()
-		keeper.unregister(id)
+		keeper.unregister(uid)
 		close(outChan)
 	})
 }
@@ -40,12 +40,11 @@ func PullMsgFactory(keeper *AddrKeeper) http.Handler {
 func SendMsgFactory(keeper *AddrKeeper) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		segs := strings.Split(r.URL.Path, "/")
-		id := segs[len(segs)-2]
-		outChan := keeper.getAddr(id)
+		uid := mux.Vars(r)["uid"]
+		outChan := keeper.getAddr(uid)
 		if outChan == nil {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("addr not exists"))
+			w.Write([]byte("用户不存在"))
 			return
 		}
 		msg, err := io.ReadAll(r.Body)

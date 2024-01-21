@@ -11,7 +11,7 @@ import (
 func main() {
 	addrKeeper := pkg.NewAddrKeeper()
 	router := mux.NewRouter()
-	router.Handle("/users/{id}/messages", pkg.PullMsgFactory(addrKeeper)).Methods("GET")
-	router.Handle("/users/{id}/messages", pkg.SendMsgFactory(addrKeeper)).Methods("POST")
+	router.Handle("/users/{uid}/messages", pkg.PullMsgFactory(addrKeeper)).Methods("GET")
+	router.Handle("/users/{uid}/messages", pkg.SendMsgFactory(addrKeeper)).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }
